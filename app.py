@@ -4,6 +4,8 @@ import os.path
 import json
 import base64
 import requests
+from mutagen.mp3 import MP3
+import math
 
 app = Flask(__name__)
 
@@ -27,11 +29,27 @@ def index():
 
         audiobook_track_path = os.path.join(book_dirpath, book_dirname)
         track_dirpath, track_dirnames, track_filenames = next(os.walk(audiobook_track_path))
+        track_filenames.sort()
 
         for track_filename in track_filenames:
-          audiobook_dict[author_dirname][book_dirname].append(track_filename)
+          try:
+            # Commenting out for now as it takes a long time to run
+            # track_length_seconds = round(MP3(os.path.join(track_dirpath, track_filename)).info.length)
+            track_length_seconds = 200 # PLACEHOLDER
+          except:
+            track_length_seconds = -1
 
-        audiobook_dict[author_dirname][book_dirname].sort() # Sort tracks alphabetically
+          track_length = f"{math.floor(track_length_seconds / 60)}min {track_length_seconds % 60}sec"
+
+          track_dict = {
+            "track_filename": track_filename,
+            "track_length": track_length
+          }
+
+          # print(track_dict)
+
+          audiobook_dict[author_dirname][book_dirname].append(track_dict)
+
 
     return audiobook_dict
 
