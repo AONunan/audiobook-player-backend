@@ -120,9 +120,14 @@ def set_current_track():
 
 @app.route('/get_current_track')
 def get_current_track():
-  with open("db/current_track.json", "r") as f:
-    data = json.load(f)
-    return data
+  json_file = "db/current_track.json"
+
+  if (os.path.getsize(json_file)):  
+    with open(json_file, "r") as f:
+      data = json.load(f)
+      return data
+  else:
+    return json.dumps({})
 
 
 
