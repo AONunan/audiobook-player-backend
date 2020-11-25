@@ -78,11 +78,23 @@ def trigger_library_scan():
         "tracks": book_tracks
       }
 
+      sum_of_seconds = 0
+      track_index = 1
+
+      for track in audiobook_dict[author_dirname][book_dirname]["tracks"]:
+        track["track_shortname"] = f"track {track_index}"
+        track_index += 1
+
+        percentage_complete = round((sum_of_seconds / book_length_seconds) * 100)
+        print(percentage_complete)
+        sum_of_seconds += track["track_length_seconds"]
+
+        track["percentage_of_book_completed"] = percentage_complete
+
   with open("db/library.json", "w") as f:
     f.write(json.dumps(audiobook_dict, indent = 2))
 
     return "Library scan complete"
-
   
 
 @app.route('/get_library')
