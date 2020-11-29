@@ -79,11 +79,11 @@ def trigger_library_scan():
       }
 
       sum_of_seconds = 0
-      track_index = 1
+      track_number = 0
 
       for track in audiobook_dict[author_dirname][book_dirname]["tracks"]:
-        track["track_shortname"] = f"track {track_index}"
-        track_index += 1
+        track["track_number"] = track_number
+        track_number += 1
 
         percentage_complete = round((sum_of_seconds / book_length_seconds) * 100)
         print(percentage_complete)
