@@ -85,12 +85,6 @@ def trigger_library_scan():
         track["track_number"] = track_number
         track_number += 1
 
-        percentage_complete = round((sum_of_seconds / book_length_seconds) * 100)
-        print(percentage_complete)
-        sum_of_seconds += track["track_length_seconds"]
-
-        track["percentage_of_book_completed"] = percentage_complete
-
   with open("db/library.json", "w") as f:
     f.write(json.dumps(audiobook_dict, indent = 2))
 
