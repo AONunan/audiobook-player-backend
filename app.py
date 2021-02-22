@@ -1,10 +1,8 @@
 from flask import Flask, render_template, url_for, jsonify, request
 import os
-import os.path
 import json
-import base64
-import requests
 from mutagen.mp3 import MP3
+from mutagen.mp4 import MP4
 import math
 import re
 
@@ -17,14 +15,11 @@ def trigger_library_scan():
     time = time - time_hours*3600
 
     time_minutes = round(time/60)
-    # time = time - time_minutes*60
-
-    time_seconds = time
 
     if time_hours == 0:
-      time_string = f"{time_minutes}min"
+      time_string = f"{time_minutes} min"
     else:
-      time_string = f"{time_hours}hr {time_minutes}min"
+      time_string = f"{time_hours} hr {time_minutes} min"
 
     return time_string
 
@@ -46,6 +41,7 @@ def trigger_library_scan():
     for book_dirname in book_dirnames:
 
       book_length_seconds = 0
+      book_file_size_bytes = 0
       book_tracks = []
 
       audiobook_track_path = os.path.join(book_dirpath, book_dirname)
@@ -53,8 +49,19 @@ def trigger_library_scan():
       track_filenames.sort()
 
       for track_filename in track_filenames:
+        track_full_path = os.path.join(track_dirpath, track_filename)
+        
+        if(track_full_path.endswith(".mp3") or track_full_path.endswith(".m4a")):
+          book_file_size_bytes += os.path.getsize(track_full_path)
+
         try:
-          track_length_seconds = round(MP3(os.path.join(track_dirpath, track_filename)).info.length)
+          if(track_full_path.endswith(".mp3")):
+            track_length_seconds = 0 #round(MP3(track_full_path).info.length)
+          elif(track_full_path.endswith(".m4a")):
+            track_length_seconds = round(MP4(track_full_path).info.length)
+          else:
+            track_length_seconds = -1
+
           book_length_seconds += track_length_seconds
         except:
           track_length_seconds = -1
@@ -75,6 +82,8 @@ def trigger_library_scan():
         "narrator": title_search.group(3),
         "book_length": prettify_time(book_length_seconds),
         "book_length_seconds": book_length_seconds,
+        "book_file_size_bytes": book_file_size_bytes,
+        "book_file_size_MB": round(book_file_size_bytes/1024/1024),
         "tracks": book_tracks
       }
 
@@ -106,7 +115,7 @@ def default():
 def set_current_track():
   decoded_value = request.data.decode('utf-8')
   json_value = json.loads(decoded_value)
-  json_prettified = json.dumps(json_value, indent=2)  
+  json_prettified = json.dumps(json_value, indent=2)
 
   with open("db/current_track.json", "w") as f:
     f.write(json_prettified)
