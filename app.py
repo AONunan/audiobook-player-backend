@@ -23,6 +23,11 @@ def trigger_library_scan():
 
     return time_string
 
+  with open("db/library.json", "r") as f:
+    library_old = json.load(f)
+  
+
+
   audiobook_authors_path = "/mnt/plexmedia/Audiobooks"
 
   audiobook_dict = {}
@@ -42,37 +47,47 @@ def trigger_library_scan():
 
       book_length_seconds = 0
       book_file_size_bytes = 0
-      book_tracks = []
+      book_tracks = {}
 
       audiobook_track_path = os.path.join(book_dirpath, book_dirname)
       track_dirpath, track_dirnames, track_filenames = next(os.walk(audiobook_track_path))
       track_filenames.sort()
 
+      track_number = 1
+
       for track_filename in track_filenames:
         track_full_path = os.path.join(track_dirpath, track_filename)
         
-        if(track_full_path.endswith(".mp3") or track_full_path.endswith(".m4a")):
+        if(track_full_path.endswith(".mp3") or track_full_path.endswith(".m4a") or track_full_path.endswith(".m4b")):
           book_file_size_bytes += os.path.getsize(track_full_path)
-
+        
         try:
-          if(track_full_path.endswith(".mp3")):
-            track_length_seconds = 0 #round(MP3(track_full_path).info.length)
-          elif(track_full_path.endswith(".m4a")):
-            track_length_seconds = round(MP4(track_full_path).info.length)
-          else:
-            track_length_seconds = -1
-
-          book_length_seconds += track_length_seconds
+          # Attempt to read the track length from the old library JSON
+          track_length_seconds = library_old[author_dirname][book_dirname]["tracks"][track_filename]["track_length_seconds"]
         except:
-          track_length_seconds = -1
+          # If the track length didn't exist in the old library JSON, then read the track length directly
+          try:
+            if(track_full_path.endswith(".mp3")):
+              track_length_seconds = round(MP3(track_full_path).info.length)
+            elif(track_full_path.endswith(".m4a")):
+              track_length_seconds = round(MP4(track_full_path).info.length)
+            elif(track_full_path.endswith(".m4b")):
+              track_length_seconds = round(MP4(track_full_path).info.length)
+            else:
+              track_length_seconds = 0
 
-        track_dict = {
-          "track_filename": track_filename,
-          "track_length": prettify_time(track_length_seconds),
-          "track_length_seconds": track_length_seconds
-        }
+          except:
+            track_length_seconds = 0
 
-        book_tracks.append(track_dict)
+
+        book_length_seconds += track_length_seconds
+
+        book_tracks[track_filename] = {}
+        book_tracks[track_filename]["track_length"] = prettify_time(track_length_seconds)
+        book_tracks[track_filename]["track_length_seconds"] = track_length_seconds
+        book_tracks[track_filename]["track_number"] = track_number
+        
+        track_number += 1
 
       title_search = re.search('(\d\d\d\d) - (.*) \((.*)\)', book_dirname)
 
@@ -86,13 +101,6 @@ def trigger_library_scan():
         "book_file_size_MB": round(book_file_size_bytes/1024/1024),
         "tracks": book_tracks
       }
-
-      sum_of_seconds = 0
-      track_number = 0
-
-      for track in audiobook_dict[author_dirname][book_dirname]["tracks"]:
-        track["track_number"] = track_number
-        track_number += 1
 
   with open("db/library.json", "w") as f:
     f.write(json.dumps(audiobook_dict, indent = 2))
