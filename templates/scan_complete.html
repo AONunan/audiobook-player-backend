@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<title>Scan complete</title>
+{% endblock %}
+
+
+
+
+{% block body %}
+
+<div>
+
+  <p>Library scan complete</p>
+
+  <p>Books added:</p>
+
+  <ul>
+    {% for book_added in return_message_books_added %}
+    <li>{{book_added}}</li>
+    {% endfor %}
+
+  </ul>
+
+</div>
+
+
+
+{% endblock %}

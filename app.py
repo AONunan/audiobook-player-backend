@@ -26,7 +26,7 @@ def trigger_library_scan():
   with open("db/library.json", "r") as f:
     library_old = json.load(f)
   
-
+  return_message_books_added = []
 
   audiobook_authors_path = "/mnt/plexmedia/Audiobooks"
 
@@ -44,6 +44,11 @@ def trigger_library_scan():
     book_dirnames.sort()
 
     for book_dirname in book_dirnames:
+
+      if ((author_dirname in library_old) and (book_dirname in library_old[author_dirname])):
+        print(f"Book already exists in library: {book_dirname}")
+      else:
+        return_message_books_added.append(f"{author_dirname}/{book_dirname}")
 
       book_length_seconds = 0
       book_file_size_bytes = 0
@@ -105,7 +110,12 @@ def trigger_library_scan():
   with open("db/library.json", "w") as f:
     f.write(json.dumps(audiobook_dict, indent = 2))
 
-    return "Library scan complete"
+    # return return_message
+    return render_template(
+      'scan_complete.html',
+      return_message_books_added=return_message_books_added,
+      # return_message_books_added=["hello there", "this is a test", "testing123"]
+    )
   
 
 @app.route('/get_library')
