@@ -7,21 +7,27 @@ import math
 import re
 import requests
 import urllib.parse
+import time
 
 app = Flask(__name__)
 
 @app.route('/trigger_library_scan')
 def trigger_library_scan():
-  def prettify_time(time):
-    time_hours = math.floor(time/3600)
-    time = time - time_hours*3600
+  def prettify_time(time, round_to="minutes"):
 
-    time_minutes = round(time/60)
+    if round_to == "minutes":
+      time_hours = math.floor(time/3600)
+      time = time - time_hours*3600
 
-    if time_hours == 0:
-      time_string = f"{time_minutes} min"
-    else:
-      time_string = f"{time_hours} hr {time_minutes} min"
+      time_minutes = round(time/60)
+
+      if time_hours == 0:
+        time_string = f"{time_minutes} min"
+      else:
+        time_string = f"{time_hours} hr {time_minutes} min"
+
+    elif round_to == "hours":
+      time_string = round(time/3600)
 
     return time_string
 
@@ -48,11 +54,8 @@ def trigger_library_scan():
 
     for book_dirname in book_dirnames:
 
-      print()
-
-      if ((author_dirname in library_old) and (book_dirname in library_old[author_dirname])):
-        print(f"Book already exists in library: {book_dirname}")
-      else:
+      # If the book DOESN'T already exist in the library, then display the newly added book
+      if not ((author_dirname in library_old) and (book_dirname in library_old[author_dirname])):
         return_message_books_added.append(f"{author_dirname}/{book_dirname}")
 
       book_length_seconds = 0
@@ -109,24 +112,25 @@ def trigger_library_scan():
         "year": year,
         "book_title": book_title,
         "narrator": narrator,
-        "book_length": prettify_time(book_length_seconds),
+        "book_length": prettify_time(book_length_seconds, round_to="hours"),
         "book_length_seconds": book_length_seconds,
         "book_file_size_bytes": book_file_size_bytes,
         "book_file_size_MB": round(book_file_size_bytes/1024/1024),
-        "tracks": book_tracks
+        "tracks": book_tracks,
       }
 
       # Get book cover
 
-      cover_image_file = f"db/images/{author_dirname}_{book_dirname}.jpg"
+      cover_image_file = f"../audiobook-player-frontend/static/cover_images/{author_dirname}_{book_dirname}.jpg"
 
-      if(os.path.isfile(cover_image_file)):
-        print(f"Cover image already exists, skipping: {cover_image_file}")
-      else:
+      # Check if the cover file DOESN'T exist
+      if not (os.path.isfile(cover_image_file)):
         open_library_search_url = f"http://openlibrary.org/search.json?author={urllib.parse.quote(author_dirname)}&title={urllib.parse.quote(book_title)}"
         print(f"Searching for book: {open_library_search_url}")
         response = requests.get(open_library_search_url)
         response_body = response.json()
+
+        download_generic_cover_image = False
 
         if(response_body["numFound"] > 0):
           cover_edition_key_found = False
@@ -144,15 +148,23 @@ def trigger_library_scan():
 
               with open(cover_image_file, 'wb') as f:
                 f.write(image_response.content)
+
               break
 
           if(cover_edition_key_found == False):
+            download_generic_cover_image = True
             print("Cover edition key not found, skipping")
             
         else:
+          download_generic_cover_image = True
           print(f"No results found for: {open_library_search_url}")
 
+        if(download_generic_cover_image):
+          print("Downloading generic cover image")
+          print()
 
+          with open(cover_image_file, 'wb') as f:
+            f.write(requests.get("https://memegenerator.net/img/images/16143029/generic-book-cover.jpg").content)
 
 
   with open("db/library.json", "w") as f:
