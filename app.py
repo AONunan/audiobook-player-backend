@@ -5,6 +5,8 @@ from mutagen.mp3 import MP3
 from mutagen.mp4 import MP4
 import math
 import re
+import requests
+import urllib.parse
 
 app = Flask(__name__)
 
@@ -36,6 +38,7 @@ def trigger_library_scan():
   author_dirnames.sort()
 
   for author_dirname in author_dirnames:
+  # for author_dirname in [author_dirnames[1]]:
 
     audiobook_dict[author_dirname] = {}
 
@@ -44,6 +47,8 @@ def trigger_library_scan():
     book_dirnames.sort()
 
     for book_dirname in book_dirnames:
+
+      print()
 
       if ((author_dirname in library_old) and (book_dirname in library_old[author_dirname])):
         print(f"Book already exists in library: {book_dirname}")
@@ -96,16 +101,59 @@ def trigger_library_scan():
 
       title_search = re.search('(\d\d\d\d) - (.*) \((.*)\)', book_dirname)
 
+      year = int(title_search.group(1))
+      book_title = title_search.group(2)
+      narrator = title_search.group(3)
+
       audiobook_dict[author_dirname][book_dirname] = {
-        "year": int(title_search.group(1)),
-        "book_title": title_search.group(2),
-        "narrator": title_search.group(3),
+        "year": year,
+        "book_title": book_title,
+        "narrator": narrator,
         "book_length": prettify_time(book_length_seconds),
         "book_length_seconds": book_length_seconds,
         "book_file_size_bytes": book_file_size_bytes,
         "book_file_size_MB": round(book_file_size_bytes/1024/1024),
         "tracks": book_tracks
       }
+
+      # Get book cover
+
+      cover_image_file = f"db/images/{author_dirname}_{book_dirname}.jpg"
+
+      if(os.path.isfile(cover_image_file)):
+        print(f"Cover image already exists, skipping: {cover_image_file}")
+      else:
+        open_library_search_url = f"http://openlibrary.org/search.json?author={urllib.parse.quote(author_dirname)}&title={urllib.parse.quote(book_title)}"
+        print(f"Searching for book: {open_library_search_url}")
+        response = requests.get(open_library_search_url)
+        response_body = response.json()
+
+        if(response_body["numFound"] > 0):
+          cover_edition_key_found = False
+
+          for book_result in response_body["docs"]:
+            if("cover_edition_key" in book_result):
+              print("Found cover edition key")
+              cover_edition_key_found = True
+
+              open_library_cover_edition_key = book_result["cover_edition_key"]
+              open_library_cover_url = f"http://covers.openlibrary.org/b/olid/{open_library_cover_edition_key}-L.jpg"
+              print(f"Searching for cover image: {open_library_cover_url}")
+
+              image_response = requests.get(open_library_cover_url)
+
+              with open(cover_image_file, 'wb') as f:
+                f.write(image_response.content)
+              break
+
+          if(cover_edition_key_found == False):
+            print("Cover edition key not found, skipping")
+            
+        else:
+          print(f"No results found for: {open_library_search_url}")
+
+
+
 
   with open("db/library.json", "w") as f:
     f.write(json.dumps(audiobook_dict, indent = 2))
