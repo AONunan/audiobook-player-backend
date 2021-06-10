@@ -27,7 +27,7 @@ def trigger_library_scan():
         time_string = f"{time_hours} hr {time_minutes} min"
 
     elif round_to == "hours":
-      time_string = round(time/3600)
+      time_string = f"{round(time/3600)} hr"
 
     return time_string
 
